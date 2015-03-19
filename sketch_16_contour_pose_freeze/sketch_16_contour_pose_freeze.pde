@@ -11,15 +11,24 @@ PImage transparentImage;
 color[] userClr = new color[] { 
   color(0, 0, 0),
 };
+PVector com = new PVector();                                   
+PVector com2d = new PVector();                                   
 int frameRateCounter = 0;
 int snapshotNumber = 120;
+PVector pos = new PVector();// stores Center of Mass position
+color userColor = color(0,0,0,120); 
+color backgroundColor = color(255,255,255,180);
+//int[] xpos = new int[50];
+int bufferCounter = 30;
+int xPos1 = 1;
+int xPos2 = 1;
+int posDiff = 0;
 
 void setup()
 {
   size(1280, 960);
   smooth();  
   bufferImage = createGraphics(width, height);
-  
   //ENABLE CONTEXT
   context = new SimpleOpenNI(this);
   // enable depthMap generation 
@@ -27,15 +36,43 @@ void setup()
   //context.setMirror(!context.mirror());
   // enable skeleton generation for all joints
   context.enableUser();
+  //buffer();
+}
+
+void centerOfMass() {
+  int[] userList = context.getUsers();
+  for(int i=0;i<userList.length;i++)
+  {
+    // draw the center of mass
+//    if(context.getCoM(userList[i],com))
+//    {
+//      context.convertRealWorldToProjective(com,com2d);
+//      fill(0,255,0);
+//      ellipse(com2d.x, com2d.y, 20, 20);
+//    }
+    
+    if(frameRateCounter % bufferCounter == 0){
+      xPos2 = xPos1;
+      xPos1 = int(com2d.x);
+      posDiff = xPos1 - xPos2;
+      println(posDiff);
+      if(posDiff <= abs(5)){
+        //bufferImage.image(transparentImage, 0, 0, width, height);
+        buffer();
+        image(bufferImage, 0, 0, width, height);
+      }
+      }
+  }
 }
 
 void buffer() {
   bufferImage.beginDraw();
   bufferImage.colorMode(RGB);
-  bufferImage.fill(0, 0, 0, 180);
+  bufferImage.fill(backgroundColor);
   bufferImage.rect(0, 0, width, height);
   bufferImage.image(transparentImage, 0, 0, width, height);
   bufferImage.endDraw();
+  
 }
 
 void draw() {
@@ -47,8 +84,6 @@ void draw() {
   userImage.loadPixels();
   fastblur(context.userImage(), 6);
   //userImage.resize(displayWidth, displayHeight);
-
-  println(userImage.width, userImage.height);
 
   transparentImage = new PImage(userImage.width, userImage.height);
   transparentImage.format = ARGB;
@@ -67,29 +102,14 @@ void draw() {
       {
       } else {
         colorMode(RGB);
-        transparentImage.pixels[loc] = color(0, 0, 0, 120);
+        transparentImage.pixels[loc] = color(userColor);
       }
     }
   }
-  if (frameRateCounter % snapshotNumber == 0) 
-  {
-    buffer();
-  }
-
-  image(bufferImage, 0, 0, width, height);  
-  image(transparentImage, 0, 0, width, height);
-
-  /*
-  In der Ball Klasse
-   int loc = ball.x + ball.y*breite
-   colorMode(HSB);
-   color c = userImage.pixels[loc];
-   if(hue(c) == 0)
-   {
-   Dann umkehren oder Reset oder oder oder
-   }
-   colorMode(RGB);
-   */
+  centerOfMass();
+  //image(transparentImage, 0, 0, width, height);
+  
+  
   if (frameRateCounter % 120 == 0) {
     println("jetzt");
   }
@@ -107,7 +127,7 @@ void onNewUser(int uID) {
 void onNewUser(SimpleOpenNI curContext, int userId)
 {
   println("onNewUser - userId: " + userId);
-  println("\tstart tracking skeleton");
+  println("start tracking skeleton");
 
   curContext.startTrackingSkeleton(userId);
 }
@@ -208,3 +228,34 @@ void fastblur(PImage img,int radius)
 
 }
 
+// draw the skeleton with the selected joints
+void drawSkeleton(int userId)
+{
+  // to get the 3d joint data
+  /*
+  PVector jointPos = new PVector();
+  context.getJointPositionSkeleton(userId,SimpleOpenNI.SKEL_NECK,jointPos);
+  println(jointPos);
+  */
+  
+  context.drawLimb(userId, SimpleOpenNI.SKEL_HEAD, SimpleOpenNI.SKEL_NECK);
+
+  context.drawLimb(userId, SimpleOpenNI.SKEL_NECK, SimpleOpenNI.SKEL_LEFT_SHOULDER);
+  context.drawLimb(userId, SimpleOpenNI.SKEL_LEFT_SHOULDER, SimpleOpenNI.SKEL_LEFT_ELBOW);
+  context.drawLimb(userId, SimpleOpenNI.SKEL_LEFT_ELBOW, SimpleOpenNI.SKEL_LEFT_HAND);
+
+  context.drawLimb(userId, SimpleOpenNI.SKEL_NECK, SimpleOpenNI.SKEL_RIGHT_SHOULDER);
+  context.drawLimb(userId, SimpleOpenNI.SKEL_RIGHT_SHOULDER, SimpleOpenNI.SKEL_RIGHT_ELBOW);
+  context.drawLimb(userId, SimpleOpenNI.SKEL_RIGHT_ELBOW, SimpleOpenNI.SKEL_RIGHT_HAND);
+
+  context.drawLimb(userId, SimpleOpenNI.SKEL_LEFT_SHOULDER, SimpleOpenNI.SKEL_TORSO);
+  context.drawLimb(userId, SimpleOpenNI.SKEL_RIGHT_SHOULDER, SimpleOpenNI.SKEL_TORSO);
+
+  context.drawLimb(userId, SimpleOpenNI.SKEL_TORSO, SimpleOpenNI.SKEL_LEFT_HIP);
+  context.drawLimb(userId, SimpleOpenNI.SKEL_LEFT_HIP, SimpleOpenNI.SKEL_LEFT_KNEE);
+  context.drawLimb(userId, SimpleOpenNI.SKEL_LEFT_KNEE, SimpleOpenNI.SKEL_LEFT_FOOT);
+
+  context.drawLimb(userId, SimpleOpenNI.SKEL_TORSO, SimpleOpenNI.SKEL_RIGHT_HIP);
+  context.drawLimb(userId, SimpleOpenNI.SKEL_RIGHT_HIP, SimpleOpenNI.SKEL_RIGHT_KNEE);
+  context.drawLimb(userId, SimpleOpenNI.SKEL_RIGHT_KNEE, SimpleOpenNI.SKEL_RIGHT_FOOT);  
+}
